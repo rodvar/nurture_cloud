@@ -31,7 +31,7 @@ public class App {
                     continue;
                 }
 
-                System.out.println(String.format("Nothing foudsffnd for %s, %s!!\n", suburbName, postcode));
+                System.out.println(String.format("Nothing found for %s, %s!!\n", suburbName, postcode));
             }
         }
         command.close();
