@@ -5,7 +5,7 @@ import java.util.logging.Logger
 
 object HaversineCalculator {
 
-    val log: Logger? = Logger.getLogger(HaversineCalculator::class.simpleName)
+    private val log: Logger? = Logger.getLogger(HaversineCalculator::class.simpleName)
 
     private const val EARTH_RADIUS = 6371 //KM
 

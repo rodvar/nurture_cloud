@@ -19,7 +19,7 @@ object NurtureApp {
         var running = true
         while (running) {
 
-            print("Welcome to Nurture Cloud Suburb Search. To Exit, enter q (quit) as a suburb name\n\n")
+            println("\nWelcome to Nurture Cloud Suburb Search. To Exit, enter q (quit) as a suburb name\n")
 
             print("Please enter a suburb name: ")
             val suburbName = command.nextLine()
