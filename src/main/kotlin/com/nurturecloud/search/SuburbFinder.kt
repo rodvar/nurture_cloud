@@ -1,16 +1,9 @@
 package com.nurturecloud.search
 
-import com.jayway.jsonpath.Configuration
 import com.jayway.jsonpath.JsonPath
-import com.jayway.jsonpath.Option
-import com.jayway.jsonpath.spi.json.JacksonJsonProvider
-import com.jayway.jsonpath.spi.json.JsonProvider
-import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider
-import com.jayway.jsonpath.spi.mapper.MappingProvider
 import com.nurturecloud.domain.Query
 import com.nurturecloud.domain.Suburb
 import java.net.URL
-import java.util.*
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.concurrent.thread
@@ -25,13 +18,16 @@ class SuburbFinder {
         const val NEARBY = 5
         const val FRINGE = 10
         const val RESULTS_LIMIT = 15
+        const val CACHE_MAX_KEYS = 100
         const val DB_PATH = "aus_suburbs.json"
 
         val log: Logger? = Logger.getLogger(SuburbFinder::class.simpleName)
     }
 
-    var resource: URL? = null
-    val db = arrayListOf<Suburb>()
+    private var resource: URL? = null
+    private val db = arrayListOf<Suburb>()
+    private val lastResults = HashMap<Suburb, List<Suburb>>() // cache last results for the FRINGE case and reuse
+
     var maxResults = RESULTS_LIMIT
 
     /**
@@ -40,20 +36,24 @@ class SuburbFinder {
      *
      */
     fun find(suburb: Suburb, maxDistanceKm: Int): List<Suburb> {
-        synchronized(db) {
-            return if (suburb.hasGeoLocation()) {
-                this.db.filter {
-                    if (it.hasGeoLocation())
-                        HaversineCalculator.distance(suburb.latitude!!.toDouble(),
-                                suburb.longitude!!.toDouble(),
-                                it.latitude!!.toDouble(),
-                                it.longitude!!.toDouble()) <= maxDistanceKm
-                    else
-                        false
-                }.take(this.maxResults)
+        synchronized(this.db) {
+            val startTime = System.currentTimeMillis()
+            this.clearCacheKeeping(suburb)
+            val found = if (suburb.hasGeoLocation()) {
+                val results: List<Suburb>
+                if (this.lastResults.containsKey(suburb)) {
+                    results = this.lastResults[suburb]!!
+                } else {
+                    results = this.filterByDistance(this.db, suburb, maxDistanceKm)
+                    this.lastResults[suburb] = results
+                }
+//                this.filterByDistance(results, suburb, maxDistanceKm).shuffled().take(this.maxResults) // TO GIVE MORE VARIETY IN THE RESPONSE
+                this.filterByDistance(results, suburb, maxDistanceKm).take(this.maxResults)
             } else {
                 listOf()
             }
+            log?.log(Level.INFO, "Search took ${System.currentTimeMillis() - startTime}ms")
+            return found
         }
     }
 
@@ -67,26 +67,30 @@ class SuburbFinder {
         }
     }
 
+    /**
+     * Filter the given list by distance
+     * @param list of data results
+     * @param suburb as a reference point (middle of the circle)
+     * @param maxDistanceKm to limit results
+     * @returntthe filtered list
+     */
+    private fun filterByDistance(list: List<Suburb>, suburb: Suburb, maxDistanceKm: Int): List<Suburb> {
+        return list.filter {
+            if (it != suburb && it.hasGeoLocation())
+                HaversineCalculator.distance(suburb.latitude!!.toDouble(),
+                        suburb.longitude!!.toDouble(),
+                        it.latitude!!.toDouble(),
+                        it.longitude!!.toDouble()) <= maxDistanceKm
+            else
+                false
+        }
+    }
+
     fun init() {
-        Configuration.setDefaults(object : Configuration.Defaults {
-
-            private val jsonProvider = JacksonJsonProvider()
-            private val mappingProvider = JacksonMappingProvider()
-
-            override fun jsonProvider(): JsonProvider {
-                return jsonProvider
-            }
-
-            override fun mappingProvider(): MappingProvider {
-                return mappingProvider
-            }
-
-            override fun options(): Set<Option> {
-                return EnumSet.noneOf(Option::class.java)
-            }
-        })
+        // If DB is too big JSonPath can be used to parse over the file directly without needed to upload it completely to memory
         val list: List<Map<String, Any?>> = JsonPath.parse(this.dbResource().readText()).read("$..*")
         thread {
+            Thread.currentThread().priority = Thread.MAX_PRIORITY
             synchronized(db) {
                 this.toSuburb(list)
             }
@@ -109,6 +113,7 @@ class SuburbFinder {
     }
 
     /**
+     * TODO use Gson or Jackson
      * @param the list of hashmap strings to be converted into the POJO
      */
     private fun toSuburb(map: Map<String, Any?>) = try {
@@ -127,5 +132,19 @@ class SuburbFinder {
         if (this.resource == null)
             this.resource = Thread.currentThread().contextClassLoader.getResource(DB_PATH)
         return this.resource!!
+    }
+
+    private fun clearCacheKeeping(suburb: Suburb) {
+        if (this.lastResults.keys.size >= CACHE_MAX_KEYS) {
+            this.lastResults[suburb].let {
+                this.clearCache()
+                if (it != null)
+                    this.lastResults[suburb] = it
+            }
+        }
+    }
+
+    fun clearCache() {
+        this.lastResults.clear()
     }
 }

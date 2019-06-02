@@ -4,6 +4,9 @@ import com.nurturecloud.domain.Query
 import com.nurturecloud.search.SuburbFinder
 import java.util.*
 
+/**
+ * Command line interface implementation
+ */
 object NurtureApp {
 
     private const val QUIT = "Q"
@@ -46,8 +49,9 @@ object NurtureApp {
                 }
                 println("Suburb ${requestedSuburb.locality}, ${requestedSuburb.state} ${requestedSuburb.postcode} - (${requestedSuburb.latitude},${requestedSuburb.longitude}) ")
 
-                val nearbySuburbs = suburbFinder.find(requestedSuburb, SuburbFinder.NEARBY)
+                // order is important here to optimize cache :)
                 val fringeSuburbs = suburbFinder.find(requestedSuburb, SuburbFinder.FRINGE)
+                val nearbySuburbs = suburbFinder.find(requestedSuburb, SuburbFinder.NEARBY)
 
                 if (nearbySuburbs.isEmpty() && fringeSuburbs.isEmpty()) {
                     println(String.format("Nothing found for %s, %s!!\n", suburbName, postcode))

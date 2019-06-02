@@ -6,6 +6,7 @@ import com.nurturecloud.search.SuburbFinder
 import com.nurturecloud.search.SuburbFinder.Companion.FRINGE
 import com.nurturecloud.search.SuburbFinder.Companion.NEARBY
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
 
 class SuburbFinderTest {
@@ -14,6 +15,11 @@ class SuburbFinderTest {
 
     init {
         this.suburbFinder.init()
+    }
+
+    @Before
+    fun pre() {
+        this.suburbFinder.clearCache()
     }
 
     @Test
@@ -30,7 +36,7 @@ class SuburbFinderTest {
     fun testNearbyToSydneyCBD() {
         val sydney = this.suburbFinder.find(Query("Sydney", 2000))
         val nearbySubs: List<Suburb> = this.suburbFinder.find(sydney!!, NEARBY)
-        Assert.assertEquals(SuburbFinder.RESULTS_LIMIT, nearbySubs.size)
+        Assert.assertEquals(this.suburbFinder.maxResults, nearbySubs.size)
     }
 
     @Test
@@ -38,5 +44,18 @@ class SuburbFinderTest {
         val sydney = this.suburbFinder.find(Query("Sydney", 2000))
         val nearbySubs: List<Suburb> = this.suburbFinder.find(sydney!!, FRINGE)
         Assert.assertEquals(SuburbFinder.RESULTS_LIMIT, nearbySubs.size)
+    }
+
+    @Test
+    fun testSuburbNotFoundReturnsNoResults() {
+        val sydney = this.suburbFinder.find(Query("wowowow", 1))
+        Assert.assertNull(sydney)
+    }
+
+    @Test
+    fun testNotGeolocatedSuburbWontReturnResults() {
+        val hobart = this.suburbFinder.find(Query("NORTH HOBART", 7002))
+        val nearbySubs: List<Suburb> = this.suburbFinder.find(hobart!!, NEARBY)
+        Assert.assertEquals(0, nearbySubs.size)
     }
 }

@@ -4,7 +4,7 @@
 
  - Suburbs without lat,lng information can be discarded
  - if the suburb and locality combination does not exists in the db, no results will be shown
- -
+ - if the searched suburb does not have geolocation, no results will be shown.
 
 
 ## Scenario
