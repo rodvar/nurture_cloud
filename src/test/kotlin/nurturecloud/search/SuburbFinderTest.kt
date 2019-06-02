@@ -1,0 +1,42 @@
+package nurturecloud.search
+
+import com.nurturecloud.domain.Query
+import com.nurturecloud.domain.Suburb
+import com.nurturecloud.search.SuburbFinder
+import com.nurturecloud.search.SuburbFinder.Companion.FRINGE
+import com.nurturecloud.search.SuburbFinder.Companion.NEARBY
+import org.junit.Assert
+import org.junit.Test
+
+class SuburbFinderTest {
+
+    private var suburbFinder: SuburbFinder = SuburbFinder()
+
+    init {
+        this.suburbFinder.init()
+    }
+
+    @Test
+    fun testFindSydneyCBD() {
+        val sydney = this.suburbFinder.find(Query("Sydney", 2000))
+        Assert.assertEquals("SYDNEY", sydney?.locality)
+        Assert.assertEquals(2000, sydney?.postcode)
+        Assert.assertEquals("NSW", sydney?.state)
+        Assert.assertEquals(151.2099f, sydney?.longitude)
+        Assert.assertEquals(-33.8697f, sydney?.latitude)
+    }
+
+    @Test
+    fun testNearbyToSydneyCBD() {
+        val sydney = this.suburbFinder.find(Query("Sydney", 2000))
+        val nearbySubs: List<Suburb> = this.suburbFinder.find(sydney!!, NEARBY)
+        Assert.assertEquals(SuburbFinder.RESULTS_LIMIT, nearbySubs.size)
+    }
+
+    @Test
+    fun testFringeToSydneyCBD() {
+        val sydney = this.suburbFinder.find(Query("Sydney", 2000))
+        val nearbySubs: List<Suburb> = this.suburbFinder.find(sydney!!, FRINGE)
+        Assert.assertEquals(SuburbFinder.RESULTS_LIMIT, nearbySubs.size)
+    }
+}

@@ -46,6 +46,16 @@
             <artifactId>kotlin-reflect</artifactId>
             <version>1.2.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
+            <version>2.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.8</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -120,6 +130,7 @@
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
                                 <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                                <sourceDir>${project.basedir}/src/main/resources</sourceDir>
                             </sourceDirs>
                         </configuration>
                     </execution>
@@ -133,7 +144,7 @@
                             <sourceDirs>
                                 <source>${project.basedir}/src/test/kotlin</source>
                                 <source>${project.basedir}/src/test/java</source>
-                                <!--<source>src/main/resources</source>-->
+                                <source>${project.basedir}/src/test/resources</source>
                             </sourceDirs>
                         </configuration>
                     </execution>

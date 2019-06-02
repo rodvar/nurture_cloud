@@ -1,5 +1,12 @@
 # NurtureCloud Backend Challenge
 
+## Assumptions
+
+ - Suburbs without lat,lng information can be discarded
+ - if the suburb and locality combination does not exists in the db, no results will be shown
+ -
+
+
 ## Scenario
 
 As a real estate tech company, a common use case that our buyers have is wanting to search for properties in and around particular suburbs.  

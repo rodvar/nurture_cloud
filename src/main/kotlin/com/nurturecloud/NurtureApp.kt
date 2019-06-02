@@ -6,8 +6,12 @@ import java.util.*
 
 object NurtureApp {
 
-    private val QUIT = "Q"
+    private const val QUIT = "Q"
     private val suburbFinder = SuburbFinder()
+
+    init {
+        this.suburbFinder.init()
+    }
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -35,17 +39,24 @@ object NurtureApp {
                     continue
                 }
 
-                val nearbySuburbs = suburbFinder.find(Query(suburbName, Integer.parseInt(postcode)), SuburbFinder.NEARBY)
-                val fringeSuburbs = suburbFinder.find(Query(suburbName, Integer.parseInt(postcode)), SuburbFinder.FRINGE)
+                val requestedSuburb = suburbFinder.find(Query(suburbName, Integer.parseInt(postcode)))
+                if (requestedSuburb == null) {
+                    print("\nERROR: Suburb not found, please try again. \n\n")
+                    continue
+                }
+                println("Suburb ${requestedSuburb.locality}, ${requestedSuburb.state} ${requestedSuburb.postcode} - (${requestedSuburb.latitude},${requestedSuburb.longitude}) ")
+
+                val nearbySuburbs = suburbFinder.find(requestedSuburb, SuburbFinder.NEARBY)
+                val fringeSuburbs = suburbFinder.find(requestedSuburb, SuburbFinder.FRINGE)
 
                 if (nearbySuburbs.isEmpty() && fringeSuburbs.isEmpty()) {
                     println(String.format("Nothing found for %s, %s!!\n", suburbName, postcode))
                 } else {
                     println("\n\nNearby Suburbs:\n")
-                    nearbySuburbs.forEach { (postcode1, locality) -> println(String.format("\t\t\t%s %s\n", locality, postcode1)) }
+                    nearbySuburbs.forEach { (postcode1, locality) -> println(String.format("\t%s %s", locality, postcode1)) }
 
                     println("\n\nFringe Suburbs:\n")
-                    fringeSuburbs.forEach { (postcode1, locality) -> println(String.format("\t\t\t%s %s\n", locality, postcode1)) }
+                    fringeSuburbs.forEach { (postcode1, locality) -> println(String.format("\t%s %s", locality, postcode1)) }
                 }
 
             }
