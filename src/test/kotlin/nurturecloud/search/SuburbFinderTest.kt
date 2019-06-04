@@ -35,15 +35,17 @@ class SuburbFinderTest {
     @Test
     fun testNearbyToSydneyCBD() {
         val sydney = this.suburbFinder.find(Query("Sydney", 2000))
-        val nearbySubs: List<Suburb> = this.suburbFinder.find(sydney!!, NEARBY)
-        Assert.assertEquals(this.suburbFinder.maxResults, nearbySubs.size)
+        this.suburbFinder.find(sydney!!, NEARBY) {nearbySubs ->
+            Assert.assertEquals(this.suburbFinder.maxResults, nearbySubs.size)
+        }
     }
 
     @Test
     fun testFringeToSydneyCBD() {
         val sydney = this.suburbFinder.find(Query("Sydney", 2000))
-        val nearbySubs: List<Suburb> = this.suburbFinder.find(sydney!!, FRINGE)
-        Assert.assertEquals(SuburbFinder.RESULTS_LIMIT, nearbySubs.size)
+        this.suburbFinder.find(sydney!!, FRINGE) { nearbySubs ->
+            Assert.assertEquals(SuburbFinder.RESULTS_LIMIT, nearbySubs.size)
+        }
     }
 
     @Test
@@ -55,7 +57,8 @@ class SuburbFinderTest {
     @Test
     fun testNotGeolocatedSuburbWontReturnResults() {
         val hobart = this.suburbFinder.find(Query("NORTH HOBART", 7002))
-        val nearbySubs: List<Suburb> = this.suburbFinder.find(hobart!!, NEARBY)
-        Assert.assertEquals(0, nearbySubs.size)
+        this.suburbFinder.find(hobart!!, NEARBY) { nearbySubs ->
+            Assert.assertEquals(0, nearbySubs.size)
+        }
     }
 }

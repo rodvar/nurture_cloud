@@ -4,6 +4,7 @@ import com.jayway.jsonpath.JsonPath
 import com.nurturecloud.domain.Query
 import com.nurturecloud.domain.Suburb
 import java.net.URL
+import java.util.concurrent.Executors
 import java.util.logging.Level
 import java.util.logging.Logger
 import kotlin.concurrent.thread
@@ -14,11 +15,17 @@ import kotlin.concurrent.thread
  */
 class SuburbFinder {
 
+    interface Listener {
+        fun onResults(results : List<Suburb>)
+        fun onError(error : String)
+    }
+
     companion object {
         const val NEARBY = 5
         const val FRINGE = 10
         const val RESULTS_LIMIT = 15
         const val CACHE_MAX_KEYS = 100
+        const val WORKERS_QTY = 10
         const val DB_PATH = "aus_suburbs.json"
 
         val log: Logger? = Logger.getLogger(SuburbFinder::class.simpleName)
@@ -27,33 +34,40 @@ class SuburbFinder {
     private var resource: URL? = null
     private val db = arrayListOf<Suburb>()
     private val lastResults = HashMap<Suburb, List<Suburb>>() // cache last results for the FRINGE case and reuse
+    private var initialized = false
 
     var maxResults = RESULTS_LIMIT
+
+    val executor = Executors.newFixedThreadPool(WORKERS_QTY)
 
     /**
      * @param query with suburb name and postcode
      * @param maxDistanceKm to limit the results area
      *
      */
-    fun find(suburb: Suburb, maxDistanceKm: Int): List<Suburb> {
-        synchronized(this.db) {
-            val startTime = System.currentTimeMillis()
-            this.clearCacheKeeping(suburb)
-            val found = if (suburb.hasGeoLocation()) {
-                val results: List<Suburb>
-                if (this.lastResults.containsKey(suburb)) {
-                    results = this.lastResults[suburb]!!
-                } else {
-                    results = this.filterByDistance(this.db, suburb, maxDistanceKm)
-                    this.lastResults[suburb] = results
-                }
+    fun find(suburb: Suburb, maxDistanceKm: Int, callback : (List<Suburb>) -> Unit) {
+        this.waitForInit()
+        this.executor.execute {
+//            synchronized(this.db) {
+                val startTime = System.currentTimeMillis()
+                this.clearCacheKeeping(suburb)
+                val found = if (suburb.hasGeoLocation()) {
+                    val results: List<Suburb> = if (this.lastResults.containsKey(suburb)) {
+                        this.lastResults[suburb]!!
+                    } else {
+                        this.filterByDistance(this.db, suburb, maxDistanceKm).let {
+                            this.lastResults[suburb] = it
+                            it
+                        }
+                    }
 //                this.filterByDistance(results, suburb, maxDistanceKm).shuffled().take(this.maxResults) // TO GIVE MORE VARIETY IN THE RESPONSE
-                this.filterByDistance(results, suburb, maxDistanceKm).take(this.maxResults)
-            } else {
-                listOf()
-            }
-            log?.log(Level.INFO, "Search took ${System.currentTimeMillis() - startTime}ms")
-            return found
+                    this.filterByDistance(results, suburb, maxDistanceKm).take(this.maxResults)
+                } else {
+                    listOf()
+                }
+                log?.log(Level.INFO, "Search took ${System.currentTimeMillis() - startTime}ms")
+                callback(found)
+//            }
         }
     }
 
@@ -61,6 +75,7 @@ class SuburbFinder {
      * @return the suburb associated with the query. Unique result.
      */
     fun find(query: Query): Suburb? {
+        this.waitForInit()
         synchronized(db) {
             val list = db.filter { it.locality == query.suburb.toUpperCase() && it.postcode == query.postcode }
             return if (list.isEmpty()) null else list[0]
@@ -91,9 +106,8 @@ class SuburbFinder {
         val list: List<Map<String, Any?>> = JsonPath.parse(this.dbResource().readText()).read("$..*")
         thread {
             Thread.currentThread().priority = Thread.MAX_PRIORITY
-            synchronized(db) {
-                this.toSuburb(list)
-            }
+            this.toSuburb(list)
+            this.initialized = true
         }
     }
 
@@ -146,5 +160,10 @@ class SuburbFinder {
 
     fun clearCache() {
         this.lastResults.clear()
+    }
+
+    private fun waitForInit() {
+        while (!this.initialized)
+            Thread.sleep(10L)
     }
 }

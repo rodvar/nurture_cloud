@@ -49,20 +49,25 @@ object NurtureApp {
                 }
                 println("Suburb ${requestedSuburb.locality}, ${requestedSuburb.state} ${requestedSuburb.postcode} - (${requestedSuburb.latitude},${requestedSuburb.longitude}) ")
 
+                val mainThread = Thread.currentThread()
                 // order is important here to optimize cache :)
-                val fringeSuburbs = suburbFinder.find(requestedSuburb, SuburbFinder.FRINGE)
-                val nearbySuburbs = suburbFinder.find(requestedSuburb, SuburbFinder.NEARBY)
+                suburbFinder.find(requestedSuburb, SuburbFinder.FRINGE) { fringeSuburbs ->
+                    suburbFinder.find(requestedSuburb, SuburbFinder.NEARBY) { nearbySuburbs ->
+                        mainThread.run {
+                            if (nearbySuburbs.isEmpty() && fringeSuburbs.isEmpty()) {
+                                println(String.format("Nothing found for %s, %s!!\n", suburbName, postcode))
+                            } else {
+                                println("\n\nNearby Suburbs:\n")
+                                nearbySuburbs.forEach { (postcode1, locality) -> println(String.format("\t%s %s", locality, postcode1)) }
 
-                if (nearbySuburbs.isEmpty() && fringeSuburbs.isEmpty()) {
-                    println(String.format("Nothing found for %s, %s!!\n", suburbName, postcode))
-                } else {
-                    println("\n\nNearby Suburbs:\n")
-                    nearbySuburbs.forEach { (postcode1, locality) -> println(String.format("\t%s %s", locality, postcode1)) }
-
-                    println("\n\nFringe Suburbs:\n")
-                    fringeSuburbs.forEach { (postcode1, locality) -> println(String.format("\t%s %s", locality, postcode1)) }
+                                println("\n\nFringe Suburbs:\n")
+                                fringeSuburbs.forEach { (postcode1, locality) -> println(String.format("\t%s %s", locality, postcode1)) }
+                            }
+                        }
+                    }
                 }
 
+                Thread.sleep(50L)
             }
         }
         command.close()
